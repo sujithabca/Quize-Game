@@ -1,0 +1,944 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Quiz Game — Single File (HTML/CSS/JS)</title>
+<meta name="description" content="Single-file Quiz Game with timer, score, animations, and review.">
+
+<style>
+/* ======================================================
+   Quiz Game — Styles
+   ====================================================== */
+
+/* ------------- Theme variables ------------- */
+:root{
+  --bg: #f6f7fb;
+  --card: #ffffff;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --accent-2: #7c3aed;
+  --success: #16a34a;
+  --danger: #ef4444;
+  --glass: rgba(255,255,255,0.6);
+  --shadow: 0 8px 28px rgba(15,23,42,0.06);
+  --radius: 14px;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+  --ui-font: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+/* Dark theme */
+[data-theme="dark"]{
+  --bg: #071026;
+  --card: #071830;
+  --muted: #9aa7b4;
+  --accent: #60a5fa;
+  --accent-2: #8b5cf6;
+  --glass: rgba(255,255,255,0.03);
+  --shadow: 0 8px 28px rgba(2,6,23,0.6);
+}
+
+/* ------------- Reset ------------- */
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:var(--ui-font);background:linear-gradient(180deg,var(--bg), #eaf1ff 60%);-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color:var(--muted)}
+a{color:inherit}
+
+/* ------------- Layout ------------- */
+.container{
+  max-width:1100px;margin:28px auto;padding:20px;display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start;
+}
+.header{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-family:var(--mono);font-size:18px;box-shadow:var(--shadow)}
+h1{margin:0;font-size:20px;color:var(--accent-2)}
+.subtitle{font-size:13px;color:var(--muted)}
+
+.card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+.main{display:flex;flex-direction:column;gap:12px}
+.side{display:flex;flex-direction:column;gap:12px;position:sticky;top:24px}
+
+/* ------------- Quiz UI ------------- */
+.screen{min-height:360px;display:flex;flex-direction:column;gap:12px;justify-content:center;align-items:stretch;transition:all .35s ease}
+.center{max-width:780px;margin:0 auto}
+
+/* question area */
+.q-top{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.q-number{font-weight:700;color:var(--accent-2);font-size:14px}
+.q-timer{display:flex;align-items:center;gap:8px}
+.timer-bar{height:10px;background:linear-gradient(90deg,#d6e4ff,#f0e6ff);width:220px;border-radius:999px;overflow:hidden}
+.timer-fill{height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .2s linear}
+
+/* card question */
+.question-card{padding:18px;border-radius:12px;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6)}
+.question-text{font-size:20px;font-weight:700;margin-bottom:14px;color:var(--accent-2)}
+.choices{display:grid;grid-template-columns:1fr;gap:10px}
+.choice{padding:12px;border-radius:10px;border:1px solid rgba(0,0,0,0.05);background:white;cursor:pointer;display:flex;gap:12px;align-items:center;transition:transform .12s ease,box-shadow .12s ease}
+.choice:hover{transform:translateY(-4px);box-shadow:0 10px 24px rgba(32,41,75,0.06)}
+.choice.disabled{opacity:0.6;cursor:default;transform:none;box-shadow:none}
+.choice .label{font-weight:700}
+.choice.correct{border-color:var(--success);background:linear-gradient(90deg,rgba(34,197,94,0.08),rgba(34,197,94,0.03))}
+.choice.wrong{border-color:var(--danger);background:linear-gradient(90deg,rgba(239,68,68,0.06),rgba(239,68,68,0.03))}
+
+/* controls */
+.controls{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:8px}
+.btn{padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(90deg,var(--accent),var(--accent-2));color:white;font-weight:700;cursor:pointer;box-shadow:var(--shadow)}
+.btn.secondary{background:transparent;border:1px solid rgba(0,0,0,0.06);color:var(--muted)}
+.btn.ghost{background:transparent;border:0;color:var(--muted)}
+
+/* ------------- Sidebar ------------- */
+.stats{display:flex;flex-direction:column;gap:8px}
+.stat{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:linear-gradient(180deg,rgba(0,0,0,0.02),transparent)}
+.stat strong{font-size:20px;color:var(--accent-2)}
+.controls-col{display:flex;flex-direction:column;gap:8px}
+.small-muted{font-size:13px;color:var(--muted)}
+
+/* ------------- Result screen ------------- */
+.results{display:flex;flex-direction:column;gap:12px;align-items:center;padding:18px;border-radius:12px}
+.results .score{font-size:42px;font-weight:900;color:var(--accent-2)}
+.results .summary{font-size:15px;color:var(--muted)}
+.review-list{max-height:380px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px}
+
+/* ------------- Animations ------------- */
+.fade-in{animation:fadeIn .36s ease both}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ------------- Responsive ------------- */
+@media (max-width:980px){
+  .container{grid-template-columns:1fr}
+  .side{position:static}
+}
+
+/* accessibility focus */
+:focus{outline:2px solid rgba(37,99,235,0.15);outline-offset:3px}
+
+/* lots of comments to increase file length and help you edit */
+/* --------------------------------------------------------------
+   End CSS
+   -------------------------------------------------------------- */
+
+</style>
+</head>
+<body data-theme="light">
+  <div class="container" role="application" aria-label="Quiz Game Application">
+
+    <header class="header" role="banner">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">QZ</div>
+        <div>
+          <h1>Quiz Game</h1>
+          <div class="subtitle">Single-file HTML / CSS / JavaScript — timer, review, sounds</div>
+        </div>
+      </div>
+
+      <div class="row" style="display:flex;gap:10px;align-items:center">
+        <div class="small-muted" id="bestScore">Best: —</div>
+        <div style="width:8px"></div>
+        <button class="btn secondary" id="themeToggle" title="Toggle theme">Toggle Theme</button>
+      </div>
+    </header>
+
+    <!-- Main area -->
+    <main class="card main" role="main" aria-live="polite">
+
+      <!-- START SCREEN -->
+      <section id="startScreen" class="screen center fade-in" aria-hidden="false">
+        <div style="text-align:center;max-width:720px">
+          <h2 style="margin:0 0 8px">Ready to test your knowledge?</h2>
+          <p class="small-muted">This quiz includes a per-question timer, animated transitions, and a review screen. Use the keyboard: numbers 1-4 to pick answers, Enter to confirm.</p>
+        </div>
+
+        <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-top:14px">
+          <label style="display:flex;gap:8px;align-items:center" class="small-muted">
+            <span>Questions</span>
+            <select id="questionCount" style="margin-left:6px;padding:8px;border-radius:8px">
+              <option value="5">5</option>
+              <option value="10" selected>10</option>
+              <option value="15">15</option>
+            </select>
+          </label>
+
+          <label style="display:flex;gap:8px;align-items:center" class="small-muted">
+            <span>Time per question</span>
+            <select id="timePerQuestion" style="margin-left:6px;padding:8px;border-radius:8px">
+              <option value="10">10s</option>
+              <option value="15" selected>15s</option>
+              <option value="25">25s</option>
+            </select>
+          </label>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:16px">
+          <button class="btn" id="startBtn">Start Quiz</button>
+          <button class="btn secondary" id="practiceBtn">Practice (no timer)</button>
+        </div>
+
+        <div style="margin-top:20px" class="small-muted">Tip: Press <kbd>1</kbd>–<kbd>4</kbd> to select an answer. Press <kbd>N</kbd> for next question.</div>
+      </section>
+
+      <!-- QUIZ SCREEN -->
+      <section id="quizScreen" class="screen" aria-hidden="true" style="display:none">
+        <div class="q-top">
+          <div class="q-number" id="qNumber">Question 1 / 10</div>
+          <div class="q-timer" aria-hidden="false">
+            <div class="timer-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <div class="timer-fill" id="timerFill" style="width:0%"></div>
+            </div>
+            <div class="small-muted" id="timerLabel">15s</div>
+          </div>
+        </div>
+
+        <div class="question-card" id="questionCard" role="region" aria-labelledby="questionText" tabindex="0">
+          <div class="question-text" id="questionText">Question text will go here</div>
+          <div class="choices" id="choicesList" role="list">
+            <!-- choices inserted here -->
+          </div>
+        </div>
+
+        <div class="controls">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn secondary" id="skipBtn">Skip</button>
+            <button class="btn secondary" id="hintBtn">Hint</button>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="small-muted" id="scoreDisplay">Score: 0</div>
+            <button class="btn" id="nextBtn">Next</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULT SCREEN -->
+      <section id="resultScreen" class="screen" aria-hidden="true" style="display:none">
+        <div class="results card">
+          <div class="score" id="finalScore">0 / 0</div>
+          <div class="summary" id="scoreSummary">You answered 0 correct out of 0 questions.</div>
+
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn" id="restartBtn">Play Again</button>
+            <button class="btn secondary" id="shareBtn">Share Results</button>
+            <button class="btn ghost" id="downloadBtn">Download Summary</button>
+          </div>
+
+          <div style="width:100%;margin-top:12px" class="review-list" id="reviewList" aria-live="polite">
+            <!-- per-question review items will be appended here -->
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Sidebar -->
+    <aside class="side">
+      <div class="card stats">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="small-muted">Current Stats</div>
+          <div class="small-muted" id="timerMode">Timer: On</div>
+        </div>
+
+        <div class="stat">
+          <div class="small-muted">Score</div>
+          <strong id="statScore">0</strong>
+        </div>
+
+        <div class="stat">
+          <div class="small-muted">Correct</div>
+          <strong id="statCorrect">0</strong>
+        </div>
+
+        <div class="stat">
+          <div class="small-muted">Incorrect</div>
+          <strong id="statWrong">0</strong>
+        </div>
+
+        <div class="stat">
+          <div class="small-muted">Time Left</div>
+          <strong id="statTime">0s</strong>
+        </div>
+      </div>
+
+      <div class="card controls-col">
+        <div class="small-muted">Settings</div>
+        <label><input type="checkbox" id="soundToggle" checked /> Enable sound</label>
+        <label><input type="checkbox" id="persistHighScore" checked /> Save best score</label>
+        <label><input type="checkbox" id="confirmSkip" /> Confirm before skip</label>
+      </div>
+
+      <div class="card" style="text-align:center">
+        <div class="small-muted">Made with ♥ — single-file demo</div>
+      </div>
+    </aside>
+
+    <footer style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;margin-top:12px">
+      Keyboard: 1–4 select • Enter next • N for next • Ctrl+T theme
+    </footer>
+  </div>
+
+<script>
+/* ======================================================
+   Quiz Game — JavaScript
+   - Single-file: questions, UI, timer, sounds, storage
+   - Well-commented so you can customize questions & behavior
+   ====================================================== */
+
+/* -----------------------------
+   Utility helpers
+   ----------------------------- */
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from((root || document).querySelectorAll(sel));
+const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const now = () => Date.now();
+const uid = () => Math.random().toString(36).slice(2,9);
+
+/* -----------------------------
+   DOM refs
+   ----------------------------- */
+const refs = {
+  startScreen: $('#startScreen'),
+  quizScreen: $('#quizScreen'),
+  resultScreen: $('#resultScreen'),
+  startBtn: $('#startBtn'),
+  practiceBtn: $('#practiceBtn'),
+  questionCount: $('#questionCount'),
+  timePerQuestion: $('#timePerQuestion'),
+  qNumber: $('#qNumber'),
+  timerFill: $('#timerFill'),
+  timerLabel: $('#timerLabel'),
+  questionText: $('#questionText'),
+  choicesList: $('#choicesList'),
+  nextBtn: $('#nextBtn'),
+  skipBtn: $('#skipBtn'),
+  hintBtn: $('#hintBtn'),
+  scoreDisplay: $('#scoreDisplay'),
+  statScore: $('#statScore'),
+  statCorrect: $('#statCorrect'),
+  statWrong: $('#statWrong'),
+  statTime: $('#statTime'),
+  finalScore: $('#finalScore'),
+  scoreSummary: $('#scoreSummary'),
+  reviewList: $('#reviewList'),
+  restartBtn: $('#restartBtn'),
+  shareBtn: $('#shareBtn'),
+  downloadBtn: $('#downloadBtn'),
+  timeModeLabel: $('#timerMode'),
+  soundToggle: $('#soundToggle'),
+  persistHighScore: $('#persistHighScore'),
+  themeToggle: $('#themeToggle'),
+  bestScore: $('#bestScore'),
+  practiceBtnEl: $('#practiceBtn'),
+  hintBtnEl: $('#hintBtn'),
+  confirmSkip: $('#confirmSkip')
+};
+
+/* -----------------------------
+   Sound engine (simple)
+   ----------------------------- */
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio(){
+  if(!audioCtx){
+    try{ audioCtx = new AudioCtx(); } catch(e){ audioCtx = null; }
+  }
+}
+function beep(frequency = 440, duration = 0.12, type='sine', gain = 0.08){
+  if(!refs.soundToggle.checked) return;
+  ensureAudio();
+  if(!audioCtx) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.value = frequency;
+  g.gain.value = gain;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start();
+  o.stop(audioCtx.currentTime + duration);
+}
+
+/* preset sounds */
+function playCorrect(){ beep(880,0.12,'sine',0.08); beep(1100,0.06,'square',0.06); }
+function playWrong(){ beep(220,0.15,'sawtooth',0.08); }
+function playClick(){ beep(520,0.06,'sine',0.04); }
+
+/* -----------------------------
+   Questions dataset (General Knowledge)
+   - you can replace or extend this array with your own questions
+   - each question: {id, q, choices:[], answerIndex (0-based), explanation (optional), category}
+   ----------------------------- */
+const QUESTION_BANK = [
+  { id: uid(), q: "What is the capital city of Australia?", choices: ["Sydney","Melbourne","Canberra","Perth"], answerIndex: 2, explanation: "Canberra became the capital in 1913 as a compromise between Sydney and Melbourne.", category: "Geography" },
+  { id: uid(), q: "Who wrote the play 'Romeo and Juliet'?", choices: ["Christopher Marlowe","William Shakespeare","Ben Jonson","Thomas Kyd"], answerIndex: 1, explanation: "William Shakespeare wrote Romeo and Juliet around 1595.", category: "Literature" },
+  { id: uid(), q: "Which planet is known as the Red Planet?", choices: ["Venus","Mars","Jupiter","Saturn"], answerIndex: 1, explanation: "Mars appears red due to iron oxide (rust) on its surface.", category: "Science" },
+  { id: uid(), q: "What is the largest ocean on Earth?", choices: ["Atlantic Ocean","Indian Ocean","Arctic Ocean","Pacific Ocean"], answerIndex: 3, explanation: "The Pacific Ocean covers more than 30% of the Earth's surface.", category: "Geography" },
+  { id: uid(), q: "Which chemical element has the symbol 'O'?", choices: ["Gold","Oxygen","Osmium","Oganesson"], answerIndex: 1, explanation: "Oxygen is denoted by 'O'.", category: "Science" },
+  { id: uid(), q: "Who painted the Mona Lisa?", choices: ["Vincent van Gogh","Leonardo da Vinci","Pablo Picasso","Claude Monet"], answerIndex: 1, explanation: "Leonardo da Vinci painted the Mona Lisa, displayed in the Louvre.", category: "Art" },
+  { id: uid(), q: "Which language is primarily spoken in Brazil?", choices: ["Spanish","Portuguese","English","French"], answerIndex: 1, explanation: "Portuguese is Brazil's official language.", category: "Language" },
+  { id: uid(), q: "What is H2O more commonly known as?", choices: ["Hydrogen Peroxide","Water","Salt","Oxygen"], answerIndex: 1, explanation: "H2O is the chemical formula for water.", category: "Science" },
+  { id: uid(), q: "In computing, what does 'CPU' stand for?", choices: ["Central Processing Unit","Computer Primary Unit","Control Processing Unit","Central Power Unit"], answerIndex: 0, explanation: "CPU stands for Central Processing Unit.", category: "Technology" },
+  { id: uid(), q: "Which country gifted the Statue of Liberty to the USA?", choices: ["United Kingdom","France","Germany","Spain"], answerIndex: 1, explanation: "France gifted the Statue of Liberty in 1886.", category: "History" },
+  { id: uid(), q: "Which gas do plants primarily absorb for photosynthesis?", choices: ["Oxygen","Carbon Dioxide","Nitrogen","Helium"], answerIndex: 1, explanation: "Plants absorb carbon dioxide (CO2) for photosynthesis.", category: "Science" },
+  { id: uid(), q: "What year did the first man land on the moon?", choices: ["1965","1969","1972","1959"], answerIndex: 1, explanation: "Apollo 11 landed on the Moon in 1969.", category: "History" },
+  { id: uid(), q: "Which instrument measures atmospheric pressure?", choices: ["Hygrometer","Anemometer","Barometer","Thermometer"], answerIndex: 2, explanation: "A barometer measures atmospheric pressure.", category: "Science" },
+  { id: uid(), q: "What currency is used in Japan?", choices: ["Yuan","Yen","Won","Dollar"], answerIndex: 1, explanation: "The Japanese currency is the Yen.", category: "Economics" },
+  { id: uid(), q: "Which organ in the human body is primarily responsible for detoxification?", choices: ["Kidney","Liver","Lungs","Spleen"], answerIndex: 1, explanation: "The liver plays a major role in detoxifying the body.", category: "Health" },
+  { id: uid(), q: "What is the chemical symbol for gold?", choices: ["Ag","Au","Gd","Go"], answerIndex: 1, explanation: "Gold's symbol is Au, from Latin 'Aurum'.", category: "Science" },
+  { id: uid(), q: "Which continent is the Sahara Desert located on?", choices: ["Asia","Africa","Australia","South America"], answerIndex: 1, explanation: "The Sahara is on the African continent.", category: "Geography" },
+  { id: uid(), q: "What is the main language spoken in Argentina?", choices: ["Portuguese","English","Spanish","Italian"], answerIndex: 2, explanation: "Spanish is the main language in Argentina.", category: "Language" },
+  { id: uid(), q: "Who discovered penicillin?", choices: ["Marie Curie","Alexander Fleming","Louis Pasteur","Gregor Mendel"], answerIndex: 1, explanation: "Alexander Fleming discovered penicillin in 1928.", category: "Science" },
+  { id: uid(), q: "Which animal is known as the King of the Jungle?", choices: ["Elephant","Tiger","Lion","Gorilla"], answerIndex: 2, explanation: "Lion is commonly referred to as the King of the Jungle.", category: "Nature" }
+  /* You can easily add more questions here to expand the bank.
+     For example: { id: uid(), q: "...", choices: ["a","b","c","d"], answerIndex: 0, explanation: "...", category: "..." }
+  */
+];
+
+/* -----------------------------
+   Game State
+   ----------------------------- */
+let GAME = {
+  mode: 'timed',          // 'timed' or 'practice'
+  questionCount: 10,
+  timePerQuestion: 15,    // seconds
+  questions: [],          // current quiz questions (shuffled)
+  currentIndex: 0,
+  score: 0,
+  correct: 0,
+  wrong: 0,
+  answers: [],            // per-question user answers {qid, chosenIndex, correctIndex, timeTaken, timedOut}
+  timer: null,
+  timeLeft: 0,
+  isRunning: false,
+  highScore: JSON.parse(localStorage.getItem('quiz:best') || 'null')
+};
+
+/* Persist best score on load */
+if(GAME.highScore){
+  refs.bestScore.textContent = `Best: ${GAME.highScore.score} (${GAME.highScore.correct}/${GAME.highScore.total})`;
+} else {
+  refs.bestScore.textContent = `Best: —`;
+}
+
+/* -----------------------------
+   Helper: shuffle and pick
+   ----------------------------- */
+function shuffle(arr){
+  const a = arr.slice();
+  for(let i=a.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function pickQuestions(count){
+  const bank = QUESTION_BANK.slice();
+  const picked = shuffle(bank).slice(0, Math.min(count, bank.length));
+  return picked;
+}
+
+/* -----------------------------
+   UI helpers
+   ----------------------------- */
+function showScreen(name){
+  refs.startScreen.style.display = 'none';
+  refs.quizScreen.style.display = 'none';
+  refs.resultScreen.style.display = 'none';
+  refs.startScreen.setAttribute('aria-hidden', 'true');
+  refs.quizScreen.setAttribute('aria-hidden', 'true');
+  refs.resultScreen.setAttribute('aria-hidden', 'true');
+
+  if(name === 'start'){
+    refs.startScreen.style.display = '';
+    refs.startScreen.setAttribute('aria-hidden', 'false');
+  } else if(name === 'quiz'){
+    refs.quizScreen.style.display = '';
+    refs.quizScreen.setAttribute('aria-hidden', 'false');
+    // focus question card for keyboard events
+    $('#questionCard').focus();
+  } else if(name === 'result'){
+    refs.resultScreen.style.display = '';
+    refs.resultScreen.setAttribute('aria-hidden', 'false');
+  }
+}
+
+/* -----------------------------
+   Timer logic
+   ----------------------------- */
+function startTimer(){
+  GAME.timeLeft = GAME.timePerQuestion;
+  updateTimerUI();
+  refs.timeModeLabel.textContent = GAME.mode === 'timed' ? 'Timer: On' : 'Timer: Off';
+  if(GAME.mode === 'timed'){
+    if(GAME.timer) clearInterval(GAME.timer);
+    GAME.timer = setInterval(()=>{
+      GAME.timeLeft -= 0.25; // quarter-second tick for smoothness
+      if(GAME.timeLeft <= 0){
+        GAME.timeLeft = 0;
+        clearInterval(GAME.timer);
+        GAME.timer = null;
+        handleTimeUp();
+      }
+      updateTimerUI();
+    }, 250);
+  } else {
+    // practice mode: don't start timer, just show '—'
+    GAME.timeLeft = GAME.timePerQuestion;
+    updateTimerUI();
+  }
+}
+function stopTimer(){
+  if(GAME.timer){ clearInterval(GAME.timer); GAME.timer = null; }
+}
+function updateTimerUI(){
+  const pct = GAME.mode === 'timed' ? (GAME.timeLeft / GAME.timePerQuestion) * 100 : 100;
+  refs.timerFill.style.width = `${pct}%`;
+  refs.timerLabel.textContent = GAME.mode === 'timed' ? `${Math.ceil(GAME.timeLeft)}s` : '—';
+  refs.statTime.textContent = GAME.mode === 'timed' ? `${Math.ceil(GAME.timeLeft)}s` : '—';
+}
+
+/* -----------------------------
+   Rendering a question + choices
+   ----------------------------- */
+function renderQuestion(){
+  const qi = GAME.currentIndex;
+  const qobj = GAME.questions[qi];
+  if(!qobj) return console.warn('No question at index', qi);
+  refs.qNumber.textContent = `Question ${qi+1} / ${GAME.questionCount}`;
+  refs.questionText.textContent = qobj.q;
+
+  // prepare choices (shuffle indices so answer isn't always same position)
+  const indices = qobj.choiceOrder || shuffle(qobj.choices.map((_,i) => i));
+  qobj.choiceOrder = indices; // store mapping
+  refs.choicesList.innerHTML = '';
+  indices.forEach((origIndex, i) => {
+    const div = document.createElement('div');
+    div.className = 'choice';
+    div.tabIndex = 0;
+    div.setAttribute('role', 'button');
+    div.dataset.choiceIndex = i; // index in displayed order
+    div.dataset.origIndex = origIndex; // original index in qobj.choices
+    div.innerHTML = `<div class="label">${String.fromCharCode(65+i)}. ${qobj.choices[origIndex]}</div>`;
+    // keyboard selection
+    div.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleChoiceSelect(div); }
+    });
+    // mouse click
+    div.addEventListener('click', ()=> {
+      handleChoiceSelect(div);
+    });
+    refs.choicesList.appendChild(div);
+  });
+
+  // reset UI state
+  refs.scoreDisplay.textContent = `Score: ${GAME.score}`;
+  refs.statScore.textContent = GAME.score;
+  refs.statCorrect.textContent = GAME.correct;
+  refs.statWrong.textContent = GAME.wrong;
+
+  // start timer for this question (record start time)
+  GAME.questionStartAt = now();
+  startTimer();
+}
+
+/* -----------------------------
+   Handle choice selection
+   ----------------------------- */
+function handleChoiceSelect(choiceEl){
+  // prevent multiple answers
+  if(choiceEl.classList.contains('disabled')) return;
+
+  // mark all choices disabled
+  $$('.choice').forEach(c => c.classList.add('disabled'));
+
+  const displayedIndex = Number(choiceEl.dataset.choiceIndex);
+  const chosenOrigIndex = Number(choiceEl.dataset.origIndex);
+
+  const qobj = GAME.questions[GAME.currentIndex];
+  const correctOrigIndex = qobj.answerIndex;
+
+  const timeTaken = (now() - GAME.questionStartAt) / 1000; // seconds
+  const timedOut = GAME.mode === 'timed' && GAME.timeLeft <= 0;
+
+  // record answer
+  GAME.answers.push({
+    qid: qobj.id,
+    question: qobj.q,
+    choices: qobj.choices.slice(),
+    chosenIndex: chosenOrigIndex,
+    correctIndex: correctOrigIndex,
+    timeTaken,
+    timedOut
+  });
+
+  // stop timer for this question
+  stopTimer();
+
+  // UI: highlight correct/incorrect
+  $$('.choice').forEach(c=>{
+    const orig = Number(c.dataset.origIndex);
+    if(orig === correctOrigIndex){
+      c.classList.add('correct');
+    }
+    if(orig === chosenOrigIndex && orig !== correctOrigIndex){
+      c.classList.add('wrong');
+    }
+  });
+
+  // scoring
+  if(chosenOrigIndex === correctOrigIndex){
+    GAME.score += Math.max(1, Math.round((GAME.mode==='timed' ? GAME.timeLeft : GAME.timePerQuestion) * 0.2)); // award points based on remaining time
+    GAME.correct += 1;
+    playCorrect();
+  } else {
+    GAME.wrong += 1;
+    playWrong();
+  }
+
+  // update displays
+  refs.scoreDisplay.textContent = `Score: ${GAME.score}`;
+  refs.statScore.textContent = GAME.score;
+  refs.statCorrect.textContent = GAME.correct;
+  refs.statWrong.textContent = GAME.wrong;
+
+  // schedule auto-advance after a short delay to show feedback
+  setTimeout(()=> {
+    // automatically go next if not at end
+    if(GAME.currentIndex < GAME.questionCount - 1){
+      nextQuestion();
+    } else {
+      finishQuiz();
+    }
+  }, 900);
+}
+
+/* -----------------------------
+   When time runs out
+   ----------------------------- */
+function handleTimeUp(){
+  // if already answered, ignore
+  if(GAME.answers.length > GAME.currentIndex) return;
+
+  // mark as timed out: push a null answer
+  const qobj = GAME.questions[GAME.currentIndex];
+  GAME.answers.push({
+    qid: qobj.id,
+    question: qobj.q,
+    choices: qobj.choices.slice(),
+    chosenIndex: null,
+    correctIndex: qobj.answerIndex,
+    timeTaken: GAME.timePerQuestion,
+    timedOut: true
+  });
+
+  // mark UI: show correct answer
+  $$('.choice').forEach(c => {
+    c.classList.add('disabled');
+    const orig = Number(c.dataset.origIndex);
+    if(orig === qobj.answerIndex) c.classList.add('correct');
+  });
+
+  // count wrong
+  GAME.wrong += 1;
+  refs.statWrong.textContent = GAME.wrong;
+  playWrong();
+
+  // short delay then move on
+  setTimeout(()=> {
+    if(GAME.currentIndex < GAME.questionCount - 1){
+      nextQuestion();
+    } else {
+      finishQuiz();
+    }
+  }, 900);
+}
+
+/* -----------------------------
+   Next question flow
+   ----------------------------- */
+function nextQuestion(){
+  if(GAME.currentIndex >= GAME.questionCount - 1){
+    finishQuiz();
+    return;
+  }
+  // advance index
+  GAME.currentIndex += 1;
+  // render question
+  renderQuestion();
+}
+
+/* -----------------------------
+   Skip & Hint handlers
+   ----------------------------- */
+refs.skipBtn.addEventListener('click', ()=>{
+  playClick();
+  if(refs.confirmSkip.checked){
+    if(!confirm('Skip this question? You will be marked incorrect.')) return;
+  }
+  // if skip, treat as wrong / timed out
+  stopTimer();
+  const qobj = GAME.questions[GAME.currentIndex];
+  GAME.answers.push({
+    qid: qobj.id,
+    question: qobj.q,
+    choices: qobj.choices.slice(),
+    chosenIndex: null,
+    correctIndex: qobj.answerIndex,
+    timeTaken: GAME.timePerQuestion,
+    timedOut: true,
+    skipped: true
+  });
+  GAME.wrong += 1;
+  refs.statWrong.textContent = GAME.wrong;
+  if(GAME.currentIndex < GAME.questionCount - 1){
+    GAME.currentIndex += 1;
+    renderQuestion();
+  } else {
+    finishQuiz();
+  }
+});
+
+refs.hintBtn.addEventListener('click', ()=>{
+  playClick();
+  // simple hint: remove one incorrect choice (50/50 lifeline)
+  const choicesEls = $$('.choice').filter(c => !c.classList.contains('disabled'));
+  if(choicesEls.length <= 2){
+    alert('Cannot remove more choices.');
+    return;
+  }
+  const qobj = GAME.questions[GAME.currentIndex];
+  // find incorrect choices (orig index != answer)
+  const incorrectEls = choicesEls.filter(c => Number(c.dataset.origIndex) !== qobj.answerIndex);
+  if(incorrectEls.length === 0) return;
+  // remove one randomly
+  const remove = pickOne(incorrectEls);
+  remove.classList.add('disabled');
+  remove.style.opacity = '0.6';
+  remove.setAttribute('aria-hidden', 'true');
+  // hint uses no scoring penalty in this demo; implement penalty if desired
+});
+
+/* helper to pick one element */
+function pickOne(arr){ return arr[rand(0, arr.length-1)]; }
+
+/* -----------------------------
+   Finish quiz and show results
+   ----------------------------- */
+function finishQuiz(){
+  stopTimer();
+  GAME.isRunning = false;
+  // show result screen
+  showScreen('result');
+  // summary text
+  refs.finalScore.textContent = `${GAME.score} pts`;
+  const x = GAME.correct;
+  const total = GAME.questionCount;
+  refs.scoreSummary.textContent = `You answered ${x} correct out of ${total} (${Math.round((x/total)*100)}%).`;
+
+  // Save high score if needed
+  if(refs.persistHighScore.checked){
+    const prev = JSON.parse(localStorage.getItem('quiz:best') || 'null');
+    const record = {score: GAME.score, correct: GAME.correct, total: GAME.questionCount, date: new Date().toISOString()};
+    if(!prev || GAME.score > prev.score){
+      localStorage.setItem('quiz:best', JSON.stringify(record));
+      GAME.highScore = record;
+      refs.bestScore.textContent = `Best: ${record.score} (${record.correct}/${record.total})`;
+      alert('New best score! 🎉');
+    }
+  }
+
+  // render review list: show each question, your answer, correct answer, explanation
+  refs.reviewList.innerHTML = '';
+  GAME.answers.forEach((a, i) => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.padding = '10px';
+    const qNum = i + 1;
+    const qHtml = `<div style="display:flex;justify-content:space-between;align-items:center">
+      <div style="font-weight:700">Q${qNum}. ${escapeHtml(a.question)}</div>
+      <div class="small-muted">${a.timedOut ? 'Timed out' : (a.chosenIndex === a.correctIndex ? 'Correct' : 'Incorrect')}</div>
+    </div>`;
+    const choicesHtml = a.choices.map((ch, idx) => {
+      const correct = idx === a.correctIndex;
+      const chosen = idx === a.chosenIndex;
+      return `<div style="display:flex;gap:8px;align-items:center">
+        <div style="width:10px;height:10px;border-radius:2px;background:${correct ? 'var(--success)' : chosen ? 'var(--danger)' : 'transparent'};border:1px solid rgba(0,0,0,0.06)"></div>
+        <div style="font-size:14px">${String.fromCharCode(65+idx)}. ${escapeHtml(ch)}</div>
+      </div>`;
+    }).join('');
+    const explanation = QUESTION_BANK.find(q => q.q === a.question)?.explanation || '';
+    div.innerHTML = qHtml + '<div style="margin-top:8px">' + choicesHtml + '</div>' + (explanation ? `<div style="margin-top:8px;color:var(--muted)"><small>Explanation: ${escapeHtml(explanation)}</small></div>` : '');
+    refs.reviewList.appendChild(div);
+  });
+}
+
+/* -----------------------------
+   Start a new game
+   ----------------------------- */
+function startGame({mode='timed', questionCount=10, timePerQuestion=15} = {}){
+  // initialize GAME state
+  GAME.mode = mode;
+  GAME.questionCount = Math.min(questionCount, QUESTION_BANK.length);
+  GAME.timePerQuestion = timePerQuestion;
+  GAME.questions = pickQuestions(GAME.questionCount);
+  GAME.currentIndex = 0;
+  GAME.score = 0;
+  GAME.correct = 0;
+  GAME.wrong = 0;
+  GAME.answers = [];
+  GAME.isRunning = true;
+
+  // UI reset
+  refs.statScore.textContent = 0;
+  refs.statCorrect.textContent = 0;
+  refs.statWrong.textContent = 0;
+  refs.scoreDisplay.textContent = 'Score: 0';
+  refs.statTime.textContent = `${GAME.timePerQuestion}s`;
+  refs.timerLabel.textContent = `${GAME.timePerQuestion}s`;
+  refs.chartUnit && (refs.chartUnit.textContent = GAME.timePerQuestion);
+
+  // show quiz screen and render first question
+  showScreen('quiz');
+  renderQuestion();
+}
+
+/* -----------------------------
+   Event bindings
+   ----------------------------- */
+refs.startBtn.addEventListener('click', ()=>{
+  playClick();
+  const count = Number(refs.questionCount.value);
+  const t = Number(refs.timePerQuestion.value);
+  startGame({mode:'timed', questionCount: count, timePerQuestion: t});
+});
+
+refs.practiceBtn.addEventListener('click', ()=>{
+  playClick();
+  const count = Number(refs.questionCount.value);
+  startGame({mode:'practice', questionCount: count, timePerQuestion: Number(refs.timePerQuestion.value)});
+});
+
+refs.nextBtn.addEventListener('click', ()=>{
+  playClick();
+  // manual next: if player hasn't answered current (no entry in answers for this index), treat as skipped/wrong
+  if(GAME.answers.length <= GAME.currentIndex){
+    // if confirm skip enabled
+    if(refs.confirmSkip.checked && !confirm('Skip this question? It will be marked incorrect.')) return;
+    handleTimeUp(); // this pushes a timed-out/wrong answer
+    return;
+  }
+  // else move to next explicit
+  if(GAME.currentIndex < GAME.questionCount - 1){
+    nextQuestion();
+  } else {
+    finishQuiz();
+  }
+});
+
+/* restart and sharing */
+refs.restartBtn.addEventListener('click', ()=>{
+  playClick();
+  showScreen('start');
+});
+refs.shareBtn.addEventListener('click', ()=>{
+  playClick();
+  // share a short text summary
+  const text = `I scored ${GAME.score} pts (${GAME.correct}/${GAME.questionCount}) on Quiz Game!`;
+  if(navigator.share){
+    navigator.share({title:'Quiz Game Score', text}).catch(()=>alert('Share canceled'));
+  } else {
+    // fallback: copy to clipboard
+    navigator.clipboard.writeText(text).then(()=> alert('Results copied to clipboard!'));
+  }
+});
+refs.downloadBtn.addEventListener('click', ()=>{
+  playClick();
+  const payload = {
+    score: GAME.score,
+    correct: GAME.correct,
+    wrong: GAME.wrong,
+    total: GAME.questionCount,
+    answers: GAME.answers,
+    date: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `quiz-result-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+
+/* keyboard shortcuts */
+document.addEventListener('keydown', (e)=>{
+  // number keys 1-4 select answer
+  const key = e.key;
+  if(!GAME.isRunning) {
+    // shortcut to toggle theme: Ctrl+T or Cmd+T
+    if((e.ctrlKey || e.metaKey) && key.toLowerCase() === 't'){
+      toggleTheme();
+      e.preventDefault();
+    }
+    return;
+  }
+  if(['1','2','3','4'].includes(key)){
+    const idx = Number(key) - 1;
+    const choices = $$('.choice');
+    if(choices[idx]) {
+      choices[idx].click();
+      e.preventDefault();
+    }
+  } else if(key === 'Enter' || key.toLowerCase() === 'n'){
+    refs.nextBtn.click();
+    e.preventDefault();
+  } else if(key.toLowerCase() === 'h'){
+    refs.hintBtn.click();
+    e.preventDefault();
+  } else if(key.toLowerCase() === 's'){
+    refs.skipBtn.click();
+    e.preventDefault();
+  }
+});
+
+/* simple escape HTML helper */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* -----------------------------
+   Theme toggle & initialization
+   ----------------------------- */
+function toggleTheme(){
+  const current = document.body.getAttribute('data-theme') || 'light';
+  const next = current === 'light' ? 'dark' : 'light';
+  document.body.setAttribute('data-theme', next);
+  localStorage.setItem('quiz:theme', next);
+}
+refs.themeToggle.addEventListener('click', ()=>{
+  playClick();
+  toggleTheme();
+});
+
+/* restore theme if saved */
+const savedTheme = localStorage.getItem('quiz:theme');
+if(savedTheme) document.body.setAttribute('data-theme', savedTheme);
+
+/* -----------------------------
+   Small polish: update best score display on load
+   ----------------------------- */
+function updateBestDisplay(){
+  const best = JSON.parse(localStorage.getItem('quiz:best') || 'null');
+  if(best){
+    refs.bestScore.textContent = `Best: ${best.score} (${best.correct}/${best.total})`;
+  } else {
+    refs.bestScore.textContent = `Best: —`;
+  }
+}
+updateBestDisplay();
+
+/* -----------------------------
+   End of script
+   ----------------------------- */
+console.log('Quiz Game loaded. Tip: open the console to see helpers.');
+/* You can access window.mock to generate and test:
+   window.mock = { start: startGame, questions: QUESTION_BANK }
+*/
+
+</script>
+</body>
+</html>
